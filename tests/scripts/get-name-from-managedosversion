@@ -1,0 +1,31 @@
+#!/bin/bash
+
+# This script returns the OS version/channel name from ManagedOSVersion
+
+set -e -x
+
+# Variables
+typeset -l KIND_OF_OS=$1
+typeset -l CHECK_FOR_ISO=$2
+typeset INVERTED="| not"
+typeset GREP_OPTS="-v"
+
+# Define if we check for stable or unstable OS
+case ${KIND_OF_OS} in
+  dev|staging)
+    unset INVERTED
+    ;;
+esac
+
+# Define if we have to check for ISO image or not
+[[ -n "${CHECK_FOR_ISO}" ]] && unset GREP_OPTS
+
+# Get the value
+VALUE=$(kubectl get ManagedOSVersion --namespace ${CLUSTER_NS} -o json 2>/dev/null \
+        | jq -r ".items[] | select(.spec.metadata.displayName | contains(\"unstable\")${INVERTED}).metadata.name" 2>/dev/null \
+        | grep ${GREP_OPTS} '\-iso' \
+        | sort \
+        | tail -1)
+
+# Return VALUE without \n
+echo -n ${VALUE}

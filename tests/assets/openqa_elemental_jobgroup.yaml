@@ -1,0 +1,91 @@
+##########################################################
+#                        WARNING                         #
+#                                                        #
+#              This file is managed in GIT!              #
+# Any changes via the openQA WebUI could be overwritten! #
+#                                                        #
+# https://github.com/rancher/elemental/elemental         #
+# Maintainers: Elemental team <elemental@suse.de>        #
+##########################################################
+
+---
+.default_products: &default_products
+  distri: sle-micro
+  version: '6.0'
+
+.default_settings: &default_settings
+  QEMUCPU: host
+  QEMURAM: '2048'
+  PASSWORD: ros
+  TEST_PASSWORD: Elemental@R00t
+  YAML_SCHEDULE: schedule/elemental/iso.yaml
+
+defaults:
+  x86_64:
+    machine: uefi-virtio
+    priority: 50
+  aarch64:
+    machine: aarch64-virtio
+    priority: 50
+
+products:
+  sl-micro-baremetal-x86_64:
+    <<: *default_products
+    flavor: Elemental-baremetal
+  sl-micro-base-x86_64:
+    <<: *default_products
+    flavor: Elemental-base
+  sl-micro-kvm-x86_64:
+    <<: *default_products
+    flavor: Elemental-kvm
+  sl-micro-rt-x86_64:
+    <<: *default_products
+    flavor: Elemental-rt
+  sl-micro-baremetal-aarch64:
+    <<: *default_products
+    flavor: Elemental-baremetal
+  sl-micro-base-aarch64:
+    <<: *default_products
+    flavor: Elemental-base
+  sl-micro-kvm-aarch64:
+    <<: *default_products
+    flavor: Elemental-kvm
+
+scenarios:
+  x86_64:
+    sl-micro-baremetal-x86_64:
+      - elemental_iso:
+          testsuite: null
+          settings:
+            <<: *default_settings
+    sl-micro-base-x86_64:
+      - elemental_iso:
+          testsuite: null
+          settings:
+            <<: *default_settings
+    sl-micro-kvm-x86_64:
+      - elemental_iso:
+          testsuite: null
+          settings:
+            <<: *default_settings
+    sl-micro-rt-x86_64:
+      - elemental_iso:
+          testsuite: null
+          settings:
+            <<: *default_settings
+  aarch64:
+    sl-micro-baremetal-aarch64:
+      - elemental_iso:
+          testsuite: null
+          settings:
+            <<: *default_settings
+    sl-micro-base-aarch64:
+      - elemental_iso:
+          testsuite: null
+          settings:
+            <<: *default_settings
+    sl-micro-kvm-aarch64:
+      - elemental_iso:
+          testsuite: null
+          settings:
+            <<: *default_settings
