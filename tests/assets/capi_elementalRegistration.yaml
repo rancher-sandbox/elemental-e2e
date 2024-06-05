@@ -1,0 +1,29 @@
+apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
+kind: ElementalRegistration
+metadata:
+  name:  machine-registration-master-%CLUSTER_NAME%
+spec:
+  config:
+    cloudConfig:
+      users:
+        - name: %USER%
+          passwd: %PASSWORD%
+    elemental:
+      registration:
+        uri: https://%ELEMENTAL_API_ENDPOINT%:30009/elemental/v1/namespaces/default/registrations/machine-registration-master-%CLUSTER_NAME%
+      agent:
+        hostname:
+          useExisting: false
+          prefix: "m-"
+        debug: true
+        osPlugin: "/usr/lib/elemental/plugins/elemental.so"
+        workDir: "/oem/elemental/agent"
+        postInstall:
+          reboot: false
+          powerOff: true
+      install:
+        debug: true
+        device: "/dev/sda"
+      reset:
+        resetOem: true
+        resetPersistent: true

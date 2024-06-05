@@ -61,6 +61,9 @@ e2e-backup-restore: deps
 e2e-check-app: deps
 	ginkgo --label-filter check-app -r -v ./e2e
 
+e2e-configure-network: deps
+	ginkgo --label-filter configure-network -r -v ./e2e
+
 e2e-configure-rancher: deps
 	ginkgo --label-filter configure -r -v ./e2e
 
@@ -73,9 +76,15 @@ e2e-install-app: deps
 e2e-install-backup-restore: deps
 	ginkgo --label-filter install-backup-restore -r -v ./e2e
 
+e2e-install-capi: deps
+	ginkgo --label-filter install-capi -r -v ./e2e
+	
 e2e-install-chartmuseum:
 	sudo ./scripts/deploy-chartmuseum $(OPERATOR_REPO)
 
+e2e-install-mgmt-host: deps
+	ginkgo --label-filter install-mgmt-host -r -v ./e2e
+	
 e2e-install-rancher: deps
 	ginkgo --label-filter install -r -v ./e2e
 
