@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -e -x
+set -e -x -v
 
 # Variable(s) and default values
 ARCH=$(uname -m)
@@ -43,7 +43,7 @@ mkdir -p logs ${VM_NAME}
 
 # iPXE stuff will not be used if ISO is set
 if [[ ${BOOT_TYPE} == "iso" ]]; then
-  ISO=$(realpath ../../elemental-*.iso 2>/dev/null)
+  ISO=$(realpath ../../cluster-api-provider-elemental/iso/elemental-*.iso 2>/dev/null)
 
   # Exit if ISO is not available
   [[ ! -f ${ISO} ]] \
@@ -58,7 +58,7 @@ if [[ ${BOOT_TYPE} == "iso" ]]; then
   
   # Use noautoconsole to check SeedImage cloud-config
   # because we need to ssh into the VM when it is installing
-  [[ ${POOL} == "master" ]] && INSTALL_FLAG+=" --noautoconsole"
+  #[[ ${POOL} == "master" ]] && INSTALL_FLAG+=" --noautoconsole"
 elif [[ ${BOOT_TYPE} == "raw" ]]; then
   RAW_IMAGE=$(realpath ../../elemental-*.raw 2>/dev/null)
 

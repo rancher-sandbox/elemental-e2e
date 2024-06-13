@@ -9,13 +9,6 @@ on:
         description: Choose booting type (pxe, iso, raw) 
         default: pxe 
         type: string
-      ca_type:
-        description: CA type to use (selfsigned or private)
-        default: selfsigned
-        type: string
-      cert-manager_version:
-        description: Version of cert-manager to use
-        type: string
       cluster_name:
         description: Name of the provisioned cluster
         default: elemental-cluster
@@ -41,26 +34,14 @@ on:
         description: Elemental operator repository to use
         type: string
         default: oci://registry.opensuse.org/isv/rancher/elemental/dev/charts/rancher
-      os_to_test:
-        description: OS repository to test (dev/staging/stable)
-        type: string
-        default: dev
       qase_run_id:
         description: Case run ID where the results will be reported
         default: auto
         type: string
-      reset:
-        description: Allow reset test (mainly used on CLI tests)
-        default: false
-        type: boolean
       runner_template:
         description: Runner template to use
         default: elemental-e2e-ci-runner-spot-x86-64-template-n2-standard-16-v5
         type: string
-      sequential:
-        description: Defines if bootstrapping is done sequentially (true) or in parallel (false)
-        default: false
-        type: boolean
       test_type:
         description: Type of test to run (cli/ui)
         required: true
@@ -153,10 +134,8 @@ jobs:
       qase_api_token: ${{ secrets.qase_api_token }}
     with:
       boot_type: ${{ inputs.boot_type }}
-      ca_type: ${{ inputs.ca_type }}
-      cert-manager_version: ${{ inputs.cert-manager_version }}
       cluster_name: ${{ inputs.cluster_name }}
-      cluster_namespace: fleet-default
+      cluster_namespace: default
       cluster_number: ${{ inputs.cluster_number }}
       destroy_runner: ${{ inputs.destroy_runner }}
       k8s_downstream_version: ${{ inputs.k8s_downstream_version }}
@@ -166,9 +145,7 @@ jobs:
       public_fqdn: ${{ needs.create-runner.outputs.public_fqdn }}
       qase_project_code: ELEMENTAL
       qase_run_id: ${{ needs.pre-qase.outputs.qase_run_id }}
-      reset: ${{ inputs.reset }}
       runner_label: ${{ needs.create-runner.outputs.runner_label }}
-      sequential: ${{ inputs.sequential }}
       test_type: ${{ inputs.test_type }}
       k8s_upstream_version: ${{ inputs.k8s_upstream_version }}
 

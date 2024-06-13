@@ -16,7 +16,6 @@ package e2e_test
 
 import (
 	"os/exec"
-	"strings"
 	"sync"
 	"time"
 
@@ -30,37 +29,30 @@ import (
 	"github.com/rancher/elemental/tests/e2e/helpers/network"
 )
 
-var _ = Describe("E2E - Bootstrap node for UI", Label("ui"), func() {
+var _ = Describe("E2E - Bootstrapping node", Label("bootstrap"), func() {
 	var (
 		bootstrappedNodes int
 		wg                sync.WaitGroup
 	)
 
-	It("Configure libvirt and bootstrap a node", func() {
-		By("Downloading MachineRegistration", func() {
-			tokenURL, err := kubectl.RunWithoutErr("get", "MachineRegistration",
-				"--namespace", clusterNS,
-				"machine-registration", "-o", "jsonpath={.status.registrationURL}")
-			Expect(err).To(Not(HaveOccurred()))
+	It("Provision the node", func() {
+		// Report to Qase
+		testCaseID = 9
 
-			// Get the YAML config file
-			Eventually(func() error {
-				return tools.GetFileFromURL(tokenURL, installConfigYaml, false)
-			}, tools.SetTimeout(2*time.Minute), 10*time.Second).ShouldNot(HaveOccurred())
-		})
+		if !isoBoot {
+			By("Downloading MachineRegistration file", func() {
+				// Download the new YAML installation config file
+				machineRegName := "machine-registration-master-" + clusterName
+				tokenURL, err := kubectl.RunWithoutErr("get", "MachineRegistration",
+					"--namespace", clusterNS, machineRegName,
+					"-o", "jsonpath={.status.registrationURL}")
+				Expect(err).To(Not(HaveOccurred()))
 
-		By("Starting default network", func() {
-			// Don't check return code, as the default network could be already removed
-			cmds := []string{"net-destroy", "net-undefine"}
-			for _, c := range cmds {
-				_ = exec.Command("sudo", "virsh", c, "default").Run()
-			}
+				Eventually(func() error {
+					return tools.GetFileFromURL(tokenURL, installConfigYaml, false)
+				}, tools.SetTimeout(2*time.Minute), 10*time.Second).ShouldNot(HaveOccurred())
+			})
 
-			err := exec.Command("sudo", "virsh", "net-create", netDefaultFileName).Run()
-			Expect(err).To(Not(HaveOccurred()))
-		})
-
-		if !isoBoot && !rawBoot {
 			By("Configuring iPXE boot script for network installation", func() {
 				numberOfFile, err := network.ConfigureiPXE(httpSrv)
 				Expect(err).To(Not(HaveOccurred()))
@@ -81,12 +73,11 @@ var _ = Describe("E2E - Bootstrap node for UI", Label("ui"), func() {
 			Expect(err).To(Not(HaveOccurred()))
 
 			// Get generated MAC address
-			client, macAdrs := GetNodeInfo(hostName)
-			Expect(client).To(Not(BeNil()))
+			_, macAdrs := GetNodeInfo(hostName)
 			Expect(macAdrs).To(Not(BeEmpty()))
 
 			wg.Add(1)
-			go func(s, h, m string, i int, cl *tools.Client) {
+			go func(s, h, m string, i int) {
 				defer wg.Done()
 				defer GinkgoRecover()
 
@@ -94,42 +85,8 @@ var _ = Describe("E2E - Bootstrap node for UI", Label("ui"), func() {
 					// Execute node deployment in parallel
 					err := exec.Command(s, h, m).Run()
 					Expect(err).To(Not(HaveOccurred()))
-
-					if rawBoot {
-						// Report to Qase that we boot from raw image
-						testCaseID = 75
-
-						// The VM will boot first on the recovery partition to create the normal partition
-						// No need to check the recovery process
-						// Only make sure the VM is up and running on the normal partition
-						GinkgoWriter.Printf("Checking ssh on VM %s\n", h)
-						CheckSSH(cl)
-						GinkgoWriter.Printf("Checking ssh OK on VM %s\n", h)
-
-						// Wait for the end of the elemental-register process
-						Eventually(func() error {
-							_, err := cl.RunSSH("(journalctl --no-pager -u elemental-register.service) | grep -Eiq 'Finished Elemental Register'")
-							return err
-						}, tools.SetTimeout(4*time.Minute), 10*time.Second).Should(Not(HaveOccurred()))
-
-						// Wait a bit more to be sure the VM is ready and halt it
-						time.Sleep(1 * time.Minute)
-						GinkgoWriter.Printf("Stopping VM %s\n", h)
-						err := exec.Command("sudo", "virsh", "destroy", h).Run()
-						Expect(err).To(Not(HaveOccurred()))
-
-						// Make sure VM status is equal to shut-off
-						Eventually(func() string {
-							out, _ := exec.Command("sudo", "virsh", "domstate", h).Output()
-							return strings.Trim(string(out), "\n\n")
-						}, tools.SetTimeout(5*time.Minute), 5*time.Second).Should(Equal("shut off"))
-					} else {
-						// Report to Qase that we boot from ISO
-						testCaseID = 9
-					}
-
 				})
-			}(installVMScript, hostName, macAdrs, index, client)
+			}(installVMScript, hostName, macAdrs, index)
 
 			// Wait a bit before starting more nodes to reduce CPU and I/O load
 			bootstrappedNodes = misc.WaitNodesBoot(index, vmIndex, bootstrappedNodes, numberOfNodesMax)
@@ -139,11 +96,8 @@ var _ = Describe("E2E - Bootstrap node for UI", Label("ui"), func() {
 		wg.Wait()
 	})
 
-	It("Add the nodes in Rancher Manager", func() {
-		// Wait a bit to make sure the VMs is really halted
-		// TODO: Find a better way to check this
-		time.Sleep(5 * time.Minute)
-
+	It("Add the nodes in the cluster", func() {
+		bootstrappedNodes = 0
 		for index := vmIndex; index <= numberOfVMs; index++ {
 			// Set node hostname
 			hostName := elemental.SetHostname(vmNameRoot, index)
@@ -161,11 +115,8 @@ var _ = Describe("E2E - Bootstrap node for UI", Label("ui"), func() {
 
 				// Restart the node(s)
 				By("Restarting "+h+" to add it in the cluster", func() {
-					// Wait a little bit to avoid starting all VMs at the same time
-					misc.RandomSleep(sequential, i)
 
 					err := exec.Command("sudo", "virsh", "start", h).Run()
-					GinkgoWriter.Printf("Starting VM %s\n", h)
 					Expect(err).To(Not(HaveOccurred()))
 				})
 
@@ -193,5 +144,25 @@ var _ = Describe("E2E - Bootstrap node for UI", Label("ui"), func() {
 
 		// Wait for all parallel jobs
 		wg.Wait()
+
+		// TODO: check if elemental hosts are
+		/*
+			kubectl get elementalhost -A
+			NAMESPACE   NAME                                     CLUSTER   MACHINE                    ELEMENTALMACHINE           PHASE     READY   AGE
+			default     m-b9de3abc-378d-46d4-989c-5594215f6c7f   rke2      rke2-control-plane-jz896   rke2-control-plane-5wp6x   Running   True    7m34s
+			default     m-2b2d48a9-4401-4b59-9553-3aaa4856e5e0                                                                   Running   True    6m2s
+		*/
+
+		// TODO: check if machines are Running
+		/*
+			management-host:~ # kubectl get machines
+			NAME                       CLUSTER   NODENAME                                 PROVIDERID                                                   PHASE     AGE   VERSION
+			rke2-control-plane-jz896   rke2      m-b9de3abc-378d-46d4-989c-5594215f6c7f   elemental://default/m-b9de3abc-378d-46d4-989c-5594215f6c7f   Running   22m   v1.30.1+rke2r1
+			rke2-md-0-tmq6b-4xpxz      rke2      m-2b2d48a9-4401-4b59-9553-3aaa4856e5e0   elemental://default/m-2b2d48a9-4401-4b59-9553-3aaa4856e5e0   Running   22m   v1.30.1+rke2r1
+		*/
+
+		By("Checking cluster state", func() {
+			WaitCAPICluster("default", clusterName)
+		})
 	})
 })
