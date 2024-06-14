@@ -13,8 +13,7 @@ spec:
         uri: https://%ELEMENTAL_API_ENDPOINT%:30009/elemental/v1/namespaces/default/registrations/machine-registration-master-%CLUSTER_NAME%
       agent:
         hostname:
-          useExisting: false
-          prefix: "m-"
+          useExisting: true
         debug: true
         osPlugin: "/usr/lib/elemental/plugins/elemental.so"
         workDir: "/oem/elemental/agent"
