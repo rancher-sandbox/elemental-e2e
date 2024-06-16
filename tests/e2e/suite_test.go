@@ -120,6 +120,94 @@ func WaitCAPICluster(ns, cn string) {
 }
 
 /*
+Wait for elemental resource to be in a ready state
+  - @param ns Namespace where the cluster is deployed
+  - @param er Elemental resource type
+  - @param rs Elemental resource name
+  - @returns Nothing, the function will fail through Ginkgo in case of issue
+*/
+func WaitElementalResources(ns, er, rs string) {
+	type state struct {
+		conditionStatus string
+		conditionType   string
+	}
+
+	// List of conditions to check
+	elementalhostStates := []state{
+		{
+			conditionStatus: "True",
+			conditionType:   "RegistrationReady",
+		},
+		{
+			conditionStatus: "True",
+			conditionType:   "InstallationReady",
+		},
+		{
+			conditionStatus: "True",
+			conditionType:   "BootstrapReady",
+		},
+		{
+			conditionStatus: "True",
+			conditionType:   "Ready",
+		},
+	}
+
+	// List of conditions to check
+	elementalmachineStates := []state{
+		{
+			conditionStatus: "True",
+			conditionType:   "AssociationReady",
+		},
+		{
+			conditionStatus: "True",
+			conditionType:   "HostReady",
+		},
+		{
+			conditionStatus: "True",
+			conditionType:   "ProviderIDReady",
+		},
+		{
+			conditionStatus: "True",
+			conditionType:   "Ready",
+		},
+	}
+
+	// Check that all needed conditions are in the good state
+	if er == "elementalhost" {
+		for _, s := range elementalhostStates {
+			CheckCondition(ns, er, rs, s.conditionType, s.conditionStatus)
+		}
+	} else {
+		for _, s := range elementalmachineStates {
+			CheckCondition(ns, er, rs, s.conditionType, s.conditionStatus)
+		}
+	}
+}
+
+/*
+Check that condition is in the expected state
+  - @param ns Namespace where the cluster is deployed
+  - @param er Elemental resource type
+  - @param rs Elemental resource name
+  - @param ct Condition type
+  - @param cs Condition status
+  - @returns Nothing, the function will fail through Ginkgo in case of issue
+*/
+func CheckCondition(ns, er, rs, ct, cs string) {
+	Eventually(func() string {
+		status, _ := kubectl.RunWithoutErr("get", er,
+			"--namespace", ns, rs,
+			"-o", "jsonpath={.status.conditions[?(@.type==\""+ct+"\")].status}")
+		if status != cs {
+			// Show the status in case of issue, easier to debug
+			GinkgoWriter.Printf("!! %s status issue !! %s is %s instead of %s\n",
+				er, ct, status, cs)
+		}
+		return status
+	}, tools.SetTimeout(2*time.Duration(usedNodes)*time.Minute), 20*time.Second).Should(Equal(cs))
+}
+
+/*
 Check that Registration resource has been correctly created
   - @param ns Namespace where the cluster is deployed
   - @param rn Registration resource name

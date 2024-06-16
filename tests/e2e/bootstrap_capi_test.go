@@ -16,6 +16,7 @@ package e2e_test
 
 import (
 	"os/exec"
+	"strings"
 	"sync"
 	"time"
 
@@ -145,21 +146,28 @@ var _ = Describe("E2E - Bootstrapping node", Label("bootstrap"), func() {
 		// Wait for all parallel jobs
 		wg.Wait()
 
-		// TODO: check if elemental hosts are
-		/*
-			kubectl get elementalhost -A
-			NAMESPACE   NAME                                     CLUSTER   MACHINE                    ELEMENTALMACHINE           PHASE     READY   AGE
-			default     m-b9de3abc-378d-46d4-989c-5594215f6c7f   rke2      rke2-control-plane-jz896   rke2-control-plane-5wp6x   Running   True    7m34s
-			default     m-2b2d48a9-4401-4b59-9553-3aaa4856e5e0                                                                   Running   True    6m2s
-		*/
+		By("Checking elemental hosts status", func() {
+			for index := vmIndex; index <= numberOfVMs; index++ {
+				// Set node hostname
+				hostName := elemental.SetHostname(vmNameRoot, index)
+				Expect(hostName).To(Not(BeEmpty()))
+				GinkgoWriter.Printf("Check elementalhost %s\n", hostName)
+				//WaitElementalHost("default", hostName)
+				WaitElementalResources("default", "elementalhost", hostName)
+			}
+		})
 
-		// TODO: check if machines are Running
-		/*
-			management-host:~ # kubectl get machines
-			NAME                       CLUSTER   NODENAME                                 PROVIDERID                                                   PHASE     AGE   VERSION
-			rke2-control-plane-jz896   rke2      m-b9de3abc-378d-46d4-989c-5594215f6c7f   elemental://default/m-b9de3abc-378d-46d4-989c-5594215f6c7f   Running   22m   v1.30.1+rke2r1
-			rke2-md-0-tmq6b-4xpxz      rke2      m-2b2d48a9-4401-4b59-9553-3aaa4856e5e0   elemental://default/m-2b2d48a9-4401-4b59-9553-3aaa4856e5e0   Running   22m   v1.30.1+rke2r1
-		*/
+		By("Checking elemental machines status", func() {
+			elementalMachineList, err := kubectl.RunWithoutErr("get", "elementalmachine",
+				"--namespace", clusterNS, "-o", "jsonpath={.items[*].metadata.name}")
+			Expect(err).To(Not(HaveOccurred()))
+
+			for _, machine := range strings.Fields(elementalMachineList) {
+				GinkgoWriter.Printf("Check elementalmachine %s\n", machine)
+				//WaitElementalMachine("default", machine)
+				WaitElementalResources("default", "elementalmachine", machine)
+			}
+		})
 
 		By("Checking cluster state", func() {
 			WaitCAPICluster("default", clusterName)
