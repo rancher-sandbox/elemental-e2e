@@ -133,7 +133,7 @@ func WaitElementalResources(ns, er, rs string) {
 	}
 
 	// List of conditions to check
-	elementalhostStates := []state{
+	elementalHostStates := []state{
 		{
 			conditionStatus: "True",
 			conditionType:   "RegistrationReady",
@@ -153,7 +153,7 @@ func WaitElementalResources(ns, er, rs string) {
 	}
 
 	// List of conditions to check
-	elementalmachineStates := []state{
+	elementalMachineStates := []state{
 		{
 			conditionStatus: "True",
 			conditionType:   "AssociationReady",
@@ -173,14 +173,18 @@ func WaitElementalResources(ns, er, rs string) {
 	}
 
 	// Check that all needed conditions are in the good state
-	if er == "elementalhost" {
-		for _, s := range elementalhostStates {
-			CheckCondition(ns, er, rs, s.conditionType, s.conditionStatus)
-		}
-	} else {
-		for _, s := range elementalmachineStates {
-			CheckCondition(ns, er, rs, s.conditionType, s.conditionStatus)
-		}
+	var statesCheck []state
+
+	switch er {
+	case "elementalhost":
+		statesCheck = elementalHostStates
+	case "elementalmachine":
+		statesCheck = elementalMachineStates
+	}
+
+	// Check that all needed conditions are in the good state
+	for _, s := range statesCheck {
+		CheckCondition(ns, er, rs, s.conditionType, s.conditionStatus)
 	}
 }
 

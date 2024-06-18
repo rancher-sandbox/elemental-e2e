@@ -10,7 +10,7 @@ spec:
           passwd: %PASSWORD%
     elemental:
       registration:
-        uri: https://%ELEMENTAL_API_ENDPOINT%:30009/elemental/v1/namespaces/default/registrations/machine-registration-master-%CLUSTER_NAME%
+        uri: https://%ELEMENTAL_API_ENDPOINT%:30009/elemental/v1/namespaces/%NAMESPACE%/registrations/machine-registration-master-%CLUSTER_NAME%
       agent:
         hostname:
           useExisting: true

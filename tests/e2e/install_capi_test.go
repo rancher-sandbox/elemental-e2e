@@ -54,6 +54,11 @@ var _ = Describe("E2E - Install CAPI", Label("install-capi"), func() {
 		err := os.Setenv("KUBECONFIG", localKubeconfig)
 		Expect(err).To(Not(HaveOccurred()))
 
+		By("Creating the namespace where resources will be deployed", func() {
+			err := kubectl.CreateNamespace(clusterNS)
+			Expect(err).To(Not(HaveOccurred()))
+		})
+
 		By("Installing and configuring clusterctl", func() {
 			err := exec.Command("curl", "-sLO", "https://github.com/kubernetes-sigs/cluster-api/releases/download/v1.5.3/clusterctl-linux-amd64").Run()
 			Expect(err).To(Not(HaveOccurred()))
@@ -79,10 +84,16 @@ var _ = Describe("E2E - Install CAPI", Label("install-capi"), func() {
 		})
 
 		By("Installing CAPI core, control plane and bootstrap providers", func() {
-			out, err := exec.Command("/usr/local/bin/clusterctl", "--v", "4", "init", "--bootstrap", "rke2", "--control-plane", "rke2", "--infrastructure", "elemental:v0.0.0").CombinedOutput()
+			out, err := exec.Command("/usr/local/bin/clusterctl",
+				"--v", "4",
+				"init",
+				"--bootstrap", "rke2",
+				"--control-plane", "rke2",
+				"--infrastructure", "elemental:v0.0.0").CombinedOutput()
 			// Show command output, easier to debug
 			GinkgoWriter.Printf("%s\n", string(out))
 			Expect(err).To(Not(HaveOccurred()))
+
 			// Wait for all pods to be started
 			checkList := [][]string{
 				{"cert-manager", "app.kubernetes.io/component=controller"},
@@ -108,18 +119,28 @@ var _ = Describe("E2E - Install CAPI", Label("install-capi"), func() {
 		})
 
 		By("Creating Elemental cluster", func() {
-			err := exec.Command("bash", "-c", "clusterctl generate cluster --control-plane-machine-count=1 --worker-machine-count=2 --infrastructure elemental:v0.0.0 --flavor rke2 "+clusterName+" --kubernetes-version="+k8sDownstreamVersion+"> ~/rke2-cluster-manifest.yaml").Run()
+			out, err := exec.Command("clusterctl", "generate", "cluster",
+				"--control-plane-machine-count=1",
+				"--worker-machine-count=2",
+				"--infrastructure", "elemental:v0.0.0",
+				"--flavor", "rke2",
+				"--target-namespace", clusterNS,
+				clusterName,
+				"--kubernetes-version="+k8sDownstreamVersion,
+			).Output()
 			Expect(err).To(Not(HaveOccurred()))
-			err = kubectl.Apply("", "/home/gh-runner/rke2-cluster-manifest.yaml")
+
+			err = os.WriteFile("/tmp/"+clusterName+"-manifest.yaml", []byte(out), os.ModePerm)
 			Expect(err).To(Not(HaveOccurred()))
-			// Check elementalmachine resources?
+			err = kubectl.Apply(clusterNS, "/tmp/"+clusterName+"-manifest.yaml")
+			Expect(err).To(Not(HaveOccurred()))
 		})
 
 		By("Creating Elemental Machine registration", func() {
 			// Set temporary file
 			registrationTmp, err := tools.CreateTemp("machineRegistration")
 			Expect(err).To(Not(HaveOccurred()))
-			//defer os.Remove(registrationTmp)
+			defer os.Remove(registrationTmp)
 
 			// Remove quotes from the url
 			url := strings.Trim(elementalAPIEndpoint, "\"\"")
@@ -128,6 +149,10 @@ var _ = Describe("E2E - Install CAPI", Label("install-capi"), func() {
 				{
 					key:   "%CLUSTER_NAME%",
 					value: clusterName,
+				},
+				{
+					key:   "%NAMESPACE%",
+					value: clusterNS,
 				},
 				{
 					key:   "%PASSWORD%",
@@ -158,18 +183,18 @@ var _ = Describe("E2E - Install CAPI", Label("install-capi"), func() {
 			}
 
 			// Apply to k8s
-			err = kubectl.Apply("default", registrationTmp)
+			err = kubectl.Apply(clusterNS, registrationTmp)
 			Expect(err).To(Not(HaveOccurred()))
 
 			// Check that the machine registration is correctly created
-			CheckCreatedRegistration("default", "machine-registration-master-"+clusterName)
+			CheckCreatedRegistration(clusterNS, "machine-registration-master-"+clusterName)
 
 			// Generate the config files
 			// TODO: replace sleep with a check
 			time.Sleep(2 * time.Minute)
 			err = os.Chdir("../../cluster-api-provider-elemental")
 			Expect(err).To(Not(HaveOccurred()))
-			err = exec.Command("bash", "-c", "./test/scripts/print_agent_config.sh -n default -r machine-registration-master-"+clusterName+" > iso/config/my-config.yaml").Run()
+			err = exec.Command("bash", "-c", "./test/scripts/print_agent_config.sh -n "+clusterNS+" -r machine-registration-master-"+clusterName+" > iso/config/my-config.yaml").Run()
 			Expect(err).To(Not(HaveOccurred()))
 
 		})
