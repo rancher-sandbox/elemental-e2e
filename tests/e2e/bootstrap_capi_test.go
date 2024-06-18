@@ -152,8 +152,7 @@ var _ = Describe("E2E - Bootstrapping node", Label("bootstrap"), func() {
 				hostName := elemental.SetHostname(vmNameRoot, index)
 				Expect(hostName).To(Not(BeEmpty()))
 				GinkgoWriter.Printf("Check elementalhost %s\n", hostName)
-				//WaitElementalHost("default", hostName)
-				WaitElementalResources("default", "elementalhost", hostName)
+				WaitElementalResources(clusterNS, "elementalhost", hostName)
 			}
 		})
 
@@ -164,13 +163,12 @@ var _ = Describe("E2E - Bootstrapping node", Label("bootstrap"), func() {
 
 			for _, machine := range strings.Fields(elementalMachineList) {
 				GinkgoWriter.Printf("Check elementalmachine %s\n", machine)
-				//WaitElementalMachine("default", machine)
-				WaitElementalResources("default", "elementalmachine", machine)
+				WaitElementalResources(clusterNS, "elementalmachine", machine)
 			}
 		})
 
 		By("Checking cluster state", func() {
-			WaitCAPICluster("default", clusterName)
+			WaitCAPICluster(clusterNS, clusterName)
 		})
 	})
 })

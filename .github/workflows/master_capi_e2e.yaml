@@ -13,6 +13,10 @@ on:
         description: Name of the provisioned cluster
         default: elemental-cluster
         type: string
+      cluster_namespace:
+        description: Namespace to deploy the cluster
+        default: e2e-ci-tests
+        type: string
       cluster_number:
         description: Number of clusters to deploy in multi-cluster test
         type: string
@@ -135,7 +139,7 @@ jobs:
     with:
       boot_type: ${{ inputs.boot_type }}
       cluster_name: ${{ inputs.cluster_name }}
-      cluster_namespace: default
+      cluster_namespace: ${{ inputs.cluster_namespace }}
       cluster_number: ${{ inputs.cluster_number }}
       destroy_runner: ${{ inputs.destroy_runner }}
       k8s_downstream_version: ${{ inputs.k8s_downstream_version }}
