@@ -41,7 +41,7 @@ const (
 	installVMScript      = "../scripts/install-vm"
 	numberOfNodesMax     = 30
 	userName             = "root"
-	userPassword         = "r0s@pwd1"
+	userPassword         = "cos"
 	vmNameRoot           = "node"
 )
 
@@ -258,26 +258,6 @@ func GetNodeInfo(hn string) (*tools.Client, string) {
 		Host:     string(data.IP) + ":22",
 		Username: userName,
 		Password: userPassword,
-	}
-
-	return c, data.Mac
-}
-
-/*
-Get Elemental node information
-  - @param hn Node hostname
-  - @returns Client structure and MAC address
-*/
-func GetIsoInfo(hn string) (*tools.Client, string) {
-	// Get network data
-	data, err := rancher.GetHostNetConfig(".*name=\""+hn+"\".*", netDefaultFileName)
-	Expect(err).To(Not(HaveOccurred()))
-
-	// Set 'client' to be able to access the node through SSH
-	c := &tools.Client{
-		Host:     string(data.IP) + ":22",
-		Username: userName,
-		Password: "cos",
 	}
 
 	return c, data.Mac

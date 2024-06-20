@@ -100,7 +100,7 @@ var _ = Describe("E2E - Bootstrapping node", Label("bootstrap"), func() {
 			hostName := elemental.SetHostname(vmNameRoot, index)
 			Expect(hostName).To(Not(BeEmpty()))
 
-			client, _ := GetIsoInfo(hostName)
+			client, _ := GetNodeInfo(hostName)
 			Expect(client).To(Not(BeNil()))
 
 			wg.Add(1)
@@ -113,16 +113,16 @@ var _ = Describe("E2E - Bootstrapping node", Label("bootstrap"), func() {
 					// NOTE: this also checks that the root password was correctly set by cloud-config
 					CheckSSH(cl)
 
-					// TODO
-					time.Sleep(3 * time.Minute)
+					// Wait before collecting journalctl logs, otherwise the logs are not complete
+					// and we will not see issues
+					// TODO: Replace this sleep by a proper check
+					time.Sleep(5 * time.Minute)
 
-					Eventually(func() error {
-						// A little bit dirty but this is temporary to keep compatibility with older Stable versions
-						out, err := cl.RunSSH("journalctl --no-pager")
-						os.WriteFile("/tmp/"+hostName+"journalctl.log", []byte(out), os.ModePerm)
-						return err
-
-					}, tools.SetTimeout(8*time.Minute), 10*time.Second).Should(Not(HaveOccurred()))
+					// A little bit dirty but this is temporary to keep compatibility with older Stable versions
+					out, err := cl.RunSSH("journalctl --no-pager")
+					Expect(err).To(Not(HaveOccurred()))
+					err = os.WriteFile("./logs/"+hostName+"-journalctl-installation.log", []byte(out), 0644)
+					Expect(err).To(Not(HaveOccurred()))
 
 					// Check that the installation is completed before halting the VM
 					Eventually(func() error {
@@ -133,6 +133,12 @@ var _ = Describe("E2E - Bootstrapping node", Label("bootstrap"), func() {
 
 					// Halt the VM
 					_ = RunSSHWithRetry(cl, "setsid -f init 0")
+
+					// Make sure VM status is equal to shut-off
+					Eventually(func() string {
+						out, _ := exec.Command("sudo", "virsh", "domstate", h).Output()
+						return strings.Trim(string(out), "\n\n")
+					}, tools.SetTimeout(5*time.Minute), 5*time.Second).Should(Equal("shut off"))
 				})
 			}(hostName, client)
 		}
@@ -140,8 +146,6 @@ var _ = Describe("E2E - Bootstrapping node", Label("bootstrap"), func() {
 	})
 
 	It("Add the nodes in the cluster", func() {
-		time.Sleep(1 * time.Minute)
-
 		bootstrappedNodes = 0
 		for index := vmIndex; index <= numberOfVMs; index++ {
 			// Set node hostname
