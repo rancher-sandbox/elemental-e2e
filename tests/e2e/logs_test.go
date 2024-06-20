@@ -16,9 +16,12 @@ package e2e_test
 
 import (
 	"os"
+	"os/exec"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
-	"github.com/rancher-sandbox/ele-testhelpers/kubectl"
+	. "github.com/onsi/gomega"
+	"github.com/rancher-sandbox/ele-testhelpers/tools"
 )
 
 func checkRC(err error) {
@@ -33,29 +36,31 @@ var _ = Describe("E2E - Getting logs node", Label("logs"), func() {
 		Name string
 	}
 
-	type getResourceLog struct {
-		Name string
-		Verb []string
-	}
-
-	It("Get the upstream cluster logs", func() {
+	It("Get the cluster logs", func() {
 		// Report to Qase
 		testCaseID = 69
 
-		By("Collecting additionals logs with kubectl commands", func() {
-			Bundles := getResourceLog{
-				"bundles",
-				[]string{"get", "describe"},
+		By("Install and execute crush-gather tool", func() {
+			crustGather := binary{
+				"https://github.com/crust-gather/crust-gather/raw/main/install.sh",
+				"crust-gather-installer",
 			}
 
-			var getResources []getResourceLog = []getResourceLog{Bundles}
-			for _, r := range getResources {
-				for _, v := range r.Verb {
-					outcmd, err := kubectl.RunWithoutErr(v, r.Name, "--all-namespaces")
-					checkRC(err)
-					err = os.WriteFile(r.Name+"-"+v+".log", []byte(outcmd), os.ModePerm)
-					checkRC(err)
-				}
+			_ = os.Mkdir("logs", 0755)
+			_ = os.Chdir("logs")
+			myDir, _ := os.Getwd()
+
+			for _, b := range []binary{crustGather} {
+				Eventually(func() error {
+					return exec.Command("curl", "-L", b.Url, "-o", b.Name).Run()
+				}, tools.SetTimeout(1*time.Minute), 5*time.Second).Should(BeNil())
+
+				err := exec.Command("chmod", "+x", b.Name).Run()
+				checkRC(err)
+				err = exec.Command("sudo", myDir+"/"+b.Name, "-f", "-y").Run()
+				checkRC(err)
+				err = exec.Command("crust-gather", "collect").Run()
+				checkRC(err)
 			}
 		})
 	})
