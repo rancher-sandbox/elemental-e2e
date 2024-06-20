@@ -44,6 +44,10 @@ mkdir -p logs ${VM_NAME}
 # iPXE stuff will not be used if ISO is set
 if [[ ${BOOT_TYPE} == "iso" ]]; then
   ISO=$(realpath ../../cluster-api-provider-elemental/iso/elemental-*.iso 2>/dev/null)
+  
+  # Use noautoconsole to collect logs
+  # because we need to ssh into the VM when it is installing
+  INSTALL_FLAG+=" --noautoconsole"
 
   # Exit if ISO is not available
   [[ ! -f ${ISO} ]] \

@@ -70,9 +70,6 @@ var _ = Describe("E2E - Bootstrapping node", Label("bootstrap"), func() {
 			hostName := elemental.SetHostname(vmNameRoot, index)
 			Expect(hostName).To(Not(BeEmpty()))
 
-			client, _ := GetNodeInfo(hostName)
-			Expect(client).To(Not(BeNil()))
-
 			// Add node in network configuration
 			err := rancher.AddNode(netDefaultFileName, hostName, index)
 			Expect(err).To(Not(HaveOccurred()))
@@ -95,17 +92,56 @@ var _ = Describe("E2E - Bootstrapping node", Label("bootstrap"), func() {
 
 			// Wait a bit before starting more nodes to reduce CPU and I/O load
 			bootstrappedNodes = misc.WaitNodesBoot(index, vmIndex, bootstrappedNodes, numberOfNodesMax)
-
-			// If the node is not shutting down, try get the journalctl logs
-			out, _ := client.RunSSH("journalctl --no-pager")
-			os.WriteFile("/tmp/"+hostName+"journalctl.log", []byte(out), os.ModePerm)
 		}
-
 		// Wait for all parallel jobs
+		wg.Wait()
+
+		for index := vmIndex; index <= numberOfVMs; index++ {
+			hostName := elemental.SetHostname(vmNameRoot, index)
+			Expect(hostName).To(Not(BeEmpty()))
+
+			client, _ := GetIsoInfo(hostName)
+			Expect(client).To(Not(BeNil()))
+
+			wg.Add(1)
+			go func(h string, cl *tools.Client) {
+				defer wg.Done()
+				defer GinkgoRecover()
+
+				By("Collecting logs on "+h, func() {
+					// Wait for SSH to be available
+					// NOTE: this also checks that the root password was correctly set by cloud-config
+					CheckSSH(cl)
+
+					// TODO
+					time.Sleep(3 * time.Minute)
+
+					Eventually(func() error {
+						// A little bit dirty but this is temporary to keep compatibility with older Stable versions
+						out, err := cl.RunSSH("journalctl --no-pager")
+						os.WriteFile("/tmp/"+hostName+"journalctl.log", []byte(out), os.ModePerm)
+						return err
+
+					}, tools.SetTimeout(8*time.Minute), 10*time.Second).Should(Not(HaveOccurred()))
+
+					// Check that the installation is completed before halting the VM
+					Eventually(func() error {
+						// A little bit dirty but this is temporary to keep compatibility with older Stable versions
+						_, err := cl.RunSSH("(journalctl --no-pager -u elemental-agent-install ; journalctl --no-pager -u elemental-agent-install.service) | grep -Eiq 'Installation successful'")
+						return err
+					}, tools.SetTimeout(8*time.Minute), 10*time.Second).Should(Not(HaveOccurred()))
+
+					// Halt the VM
+					_ = RunSSHWithRetry(cl, "setsid -f init 0")
+				})
+			}(hostName, client)
+		}
 		wg.Wait()
 	})
 
 	It("Add the nodes in the cluster", func() {
+		time.Sleep(1 * time.Minute)
+
 		bootstrappedNodes = 0
 		for index := vmIndex; index <= numberOfVMs; index++ {
 			// Set node hostname
