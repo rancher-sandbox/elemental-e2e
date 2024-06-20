@@ -15,6 +15,7 @@ limitations under the License.
 package e2e_test
 
 import (
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -69,6 +70,9 @@ var _ = Describe("E2E - Bootstrapping node", Label("bootstrap"), func() {
 			hostName := elemental.SetHostname(vmNameRoot, index)
 			Expect(hostName).To(Not(BeEmpty()))
 
+			client, _ := GetNodeInfo(hostName)
+			Expect(client).To(Not(BeNil()))
+
 			// Add node in network configuration
 			err := rancher.AddNode(netDefaultFileName, hostName, index)
 			Expect(err).To(Not(HaveOccurred()))
@@ -91,6 +95,10 @@ var _ = Describe("E2E - Bootstrapping node", Label("bootstrap"), func() {
 
 			// Wait a bit before starting more nodes to reduce CPU and I/O load
 			bootstrappedNodes = misc.WaitNodesBoot(index, vmIndex, bootstrappedNodes, numberOfNodesMax)
+
+			// If the node is not shutting down, try get the journalctl logs
+			out, _ := client.RunSSH("journalctl --no-pager")
+			os.WriteFile("/tmp/"+hostName+"journalctl.log", []byte(out), os.ModePerm)
 		}
 
 		// Wait for all parallel jobs
