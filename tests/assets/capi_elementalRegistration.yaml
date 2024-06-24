@@ -19,7 +19,7 @@ spec:
         workDir: "/oem/elemental/agent"
         postInstall:
           reboot: false
-          powerOff: true
+          powerOff: false
       install:
         debug: true
         device: "/dev/sda"
