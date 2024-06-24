@@ -41,7 +41,7 @@ const (
 	installVMScript      = "../scripts/install-vm"
 	numberOfNodesMax     = 30
 	userName             = "root"
-	userPassword         = "r0s@pwd1"
+	userPassword         = "cos"
 	vmNameRoot           = "node"
 )
 

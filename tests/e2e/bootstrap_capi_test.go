@@ -15,6 +15,7 @@ limitations under the License.
 package e2e_test
 
 import (
+	"os"
 	"os/exec"
 	"strings"
 	"sync"
@@ -94,6 +95,48 @@ var _ = Describe("E2E - Bootstrapping node", Label("bootstrap"), func() {
 		}
 
 		// Wait for all parallel jobs
+		wg.Wait()
+
+		for index := vmIndex; index <= numberOfVMs; index++ {
+			hostName := elemental.SetHostname(vmNameRoot, index)
+			Expect(hostName).To(Not(BeEmpty()))
+
+			client, _ := GetNodeInfo(hostName)
+			Expect(client).To(Not(BeNil()))
+
+			wg.Add(1)
+			go func(h string, cl *tools.Client) {
+				defer wg.Done()
+				defer GinkgoRecover()
+
+				By("Collecting logs on "+h, func() {
+					// Wait for SSH to be available
+					// NOTE: this also checks that the root password was correctly set by cloud-config
+					CheckSSH(cl)
+
+					// Check that the installation is completed before halting the VM
+					Eventually(func() error {
+						// A little bit dirty but this is temporary to keep compatibility with older Stable versions
+						_, err := cl.RunSSH("(journalctl --no-pager -u elemental-agent-install ; journalctl --no-pager -u elemental-agent-install.service) | grep -Eiq 'Installation successful'")
+						// Save journalctl logs to analyze issues if needed
+						out, logErr := cl.RunSSH("journalctl --no-pager")
+						Expect(logErr).To(Not(HaveOccurred()))
+						logErr = os.WriteFile("./logs/"+hostName+"-journalctl-installation.log", []byte(out), 0644)
+						Expect(logErr).To(Not(HaveOccurred()))
+						return err
+					}, tools.SetTimeout(8*time.Minute), 20*time.Second).Should(Not(HaveOccurred()))
+
+					// Halt the VM
+					_ = RunSSHWithRetry(cl, "setsid -f init 0")
+
+					// Make sure VM status is equal to shut-off
+					Eventually(func() string {
+						out, _ := exec.Command("sudo", "virsh", "domstate", h).Output()
+						return strings.Trim(string(out), "\n\n")
+					}, tools.SetTimeout(5*time.Minute), 5*time.Second).Should(Equal("shut off"))
+				})
+			}(hostName, client)
+		}
 		wg.Wait()
 	})
 
