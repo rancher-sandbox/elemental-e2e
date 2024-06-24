@@ -113,23 +113,17 @@ var _ = Describe("E2E - Bootstrapping node", Label("bootstrap"), func() {
 					// NOTE: this also checks that the root password was correctly set by cloud-config
 					CheckSSH(cl)
 
-					// Wait before collecting journalctl logs, otherwise the logs are not complete
-					// and we will not see issues
-					// TODO: Replace this sleep by a proper check
-					time.Sleep(5 * time.Minute)
-
-					// A little bit dirty but this is temporary to keep compatibility with older Stable versions
-					out, err := cl.RunSSH("journalctl --no-pager")
-					Expect(err).To(Not(HaveOccurred()))
-					err = os.WriteFile("./logs/"+hostName+"-journalctl-installation.log", []byte(out), 0644)
-					Expect(err).To(Not(HaveOccurred()))
-
 					// Check that the installation is completed before halting the VM
 					Eventually(func() error {
 						// A little bit dirty but this is temporary to keep compatibility with older Stable versions
 						_, err := cl.RunSSH("(journalctl --no-pager -u elemental-agent-install ; journalctl --no-pager -u elemental-agent-install.service) | grep -Eiq 'Installation successful'")
+						// Save journalctl logs to analyze issues if needed
+						out, logErr := cl.RunSSH("journalctl --no-pager")
+						Expect(logErr).To(Not(HaveOccurred()))
+						logErr = os.WriteFile("./logs/"+hostName+"-journalctl-installation.log", []byte(out), 0644)
+						Expect(logErr).To(Not(HaveOccurred()))
 						return err
-					}, tools.SetTimeout(8*time.Minute), 10*time.Second).Should(Not(HaveOccurred()))
+					}, tools.SetTimeout(8*time.Minute), 20*time.Second).Should(Not(HaveOccurred()))
 
 					// Halt the VM
 					_ = RunSSHWithRetry(cl, "setsid -f init 0")
