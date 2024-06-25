@@ -8,6 +8,9 @@ on:
       boot_type:
         required: true
         type: string
+      bootstrap_provider:
+        required: true
+        type: string
       cluster_name:
         required: true
         type: string
@@ -15,6 +18,9 @@ on:
         required: true
         type: string
       cluster_namespace:
+        required: true
+        type: string
+      control_plane_provider:
         required: true
         type: string
       destroy_runner:
@@ -71,8 +77,10 @@ jobs:
       qase_api_token: ${{ secrets.qase_api_token }}
     with:
       boot_type: ${{ inputs.boot_type }}
+      bootstrap_provider: ${{ inputs.bootstrap_provider }}
       cluster_name: ${{ inputs.cluster_name }}
       cluster_namespace: ${{ inputs.cluster_namespace }}
+      control_plane_provider: ${{ inputs.control_plane_provider }}
       destroy_runner: ${{ inputs.destroy_runner }}
       k8s_downstream_version: ${{ inputs.k8s_downstream_version }}
       node_number: ${{ inputs.node_number }}
