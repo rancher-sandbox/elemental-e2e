@@ -8,10 +8,16 @@ on:
       boot_type:
         required: true
         type: string
+      bootstrap_provider:
+        required: true
+        type: string
       cluster_name:
         required: true
         type: string
       cluster_namespace:
+        required: true
+        type: string
+      control_plane_provider:
         required: true
         type: string
       destroy_runner:
@@ -91,6 +97,7 @@ jobs:
         with:
           repository: rancher-sandbox/cluster-api-provider-elemental
           path: cluster-api-provider-elemental
+          ref: debug_branch
 
       - name: Setup Go
         id: setup_go
@@ -134,8 +141,10 @@ jobs:
         id: install_capi
         run: cd tests && make e2e-install-capi
         env:
+          BOOTSTRAP_PROVIDER: ${{ inputs.bootstrap_provider }}
           CLUSTER_NAME: ${{ inputs.cluster_name }}
           CONTROL_PLANE_ENDPOINT_HOST: "\"192.168.122.50\""
+          CONTROL_PLANE_PROVIDER: ${{ inputs.control_plane_provider }}
           ELEMENTAL_ENABLE_DEBUG: "\"true\""
           ELEMENTAL_API_ENDPOINT: "\"management-host\""
           ELEMENTAL_API_ENABLE_TLS: "\"true\""
@@ -144,7 +153,13 @@ jobs:
           
       - name: Build the ISO image
         id: build_iso
-        run: cd cluster-api-provider-elemental && AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso
+        run: |
+          cd cluster-api-provider-elemental 
+          if ${{ contains(inputs.bootstrap_provider, 'kubeadm') }}; then
+            AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso-kubeadm
+          else
+            AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso
+          fi
 
       - name: Extract iPXE artifacts from ISO
         id: extract_ipxe_artifacts

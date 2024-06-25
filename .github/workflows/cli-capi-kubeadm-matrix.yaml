@@ -1,5 +1,5 @@
 # This workflow calls the master E2E workflow with custom variables
-name: CLI-CAPI-K3s
+name: CLI-CAPI-Kubeadm
 
 on:
   workflow_dispatch:
@@ -10,7 +10,7 @@ on:
         type: boolean
       k8s_downstream_version:
         description: Cluster downstream version to use
-        default: '"1.30.1"'
+        default: '"1.29.3"'
         type: string
       k8s_upstream_version:
         description: Cluster upstream version to use
@@ -19,9 +19,10 @@ on:
       qase_run_id:
         description: Qase run ID where the results will be reported
         type: string
-  schedule:
+  # The test does not work yet, so it is disabled
+  #schedule:
     # From Monday to Saturday at 3am UTC (10pm in us-central1)
-    - cron: '0 3 * * 1-6'
+    #- cron: '0 3 * * 1-6'
 
 jobs:
   cli:
@@ -29,7 +30,7 @@ jobs:
       fail-fast: false
       max-parallel: 4
       matrix:
-        k8s_downstream_version: ${{ fromJSON(format('[{0}]', inputs.k8s_downstream_version || '"1.30.1"')) }}
+        k8s_downstream_version: ${{ fromJSON(format('[{0}]', inputs.k8s_downstream_version || '"1.29.3"')) }}
         k8s_upstream_version: ${{ fromJSON(format('[{0}]', inputs.k8s_upstream_version || '"v1.27.13+k3s1"')) }}
     uses: ./.github/workflows/master_capi_e2e.yaml
     secrets:
@@ -38,6 +39,8 @@ jobs:
       qase_api_token: ${{ secrets.QASE_API_TOKEN }}
     with:
       boot_type: iso
+      bootstrap_provider: kubeadm
+      control_plane_provider: kubeadm
       destroy_runner: ${{ github.event_name == 'schedule' && true || inputs.destroy_runner }}
       k8s_downstream_version: ${{ matrix.k8s_downstream_version }}
       k8s_upstream_version: ${{ matrix.k8s_upstream_version }}

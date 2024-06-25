@@ -41,15 +41,17 @@ const (
 	installVMScript      = "../scripts/install-vm"
 	numberOfNodesMax     = 30
 	userName             = "root"
-	userPassword         = "cos"
+	userPassword         = "r0s@pwd1"
 	vmNameRoot           = "node"
 )
 
 var (
+	bootstrapProvider    string
 	clusterName          string
 	clusterNS            string
 	clusterType          string
 	clusterYaml          string
+	controlPlaneProvider string
 	elementalAPIEndpoint string
 	elementalSupport     string
 	emulateTPM           bool
@@ -323,9 +325,11 @@ type YamlPattern struct {
 
 var _ = BeforeSuite(func() {
 	bootTypeString := os.Getenv("BOOT_TYPE")
+	bootstrapProvider = os.Getenv("BOOTSTRAP_PROVIDER")
 	clusterName = os.Getenv("CLUSTER_NAME")
 	clusterNS = os.Getenv("CLUSTER_NS")
 	clusterType = os.Getenv("CLUSTER_TYPE")
+	controlPlaneProvider = os.Getenv("CONTROL_PLANE_PROVIDER")
 	elementalAPIEndpoint = os.Getenv("ELEMENTAL_API_ENDPOINT")
 	elementalSupport = os.Getenv("ELEMENTAL_SUPPORT")
 	eTPM := os.Getenv("EMULATE_TPM")
