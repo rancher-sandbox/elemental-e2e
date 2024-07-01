@@ -9,6 +9,10 @@ on:
         description: Choose booting type (pxe, iso, raw) 
         default: pxe 
         type: string
+      bootstrap_provider:
+        description: Bootstrap provider to use
+        default: rke2
+        type: string
       cluster_name:
         description: Name of the provisioned cluster
         default: elemental-cluster
@@ -19,6 +23,10 @@ on:
         type: string
       cluster_number:
         description: Number of clusters to deploy in multi-cluster test
+        type: string
+      control_plane_provider:
+        description: Control plane provider to use
+        default: rke2
         type: string
       destroy_runner:
         description: Destroy the auto-generated self-hosted runner
@@ -138,9 +146,11 @@ jobs:
       qase_api_token: ${{ secrets.qase_api_token }}
     with:
       boot_type: ${{ inputs.boot_type }}
+      bootstrap_provider: ${{ inputs.bootstrap_provider }}
       cluster_name: ${{ inputs.cluster_name }}
       cluster_namespace: ${{ inputs.cluster_namespace }}
       cluster_number: ${{ inputs.cluster_number }}
+      control_plane_provider: ${{ inputs.control_plane_provider }}
       destroy_runner: ${{ inputs.destroy_runner }}
       k8s_downstream_version: ${{ inputs.k8s_downstream_version }}
       node_number: ${{ inputs.node_number }}

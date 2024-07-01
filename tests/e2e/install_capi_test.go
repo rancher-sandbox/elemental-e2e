@@ -87,8 +87,8 @@ var _ = Describe("E2E - Install CAPI", Label("install-capi"), func() {
 			out, err := exec.Command("/usr/local/bin/clusterctl",
 				"--v", "4",
 				"init",
-				"--bootstrap", "rke2",
-				"--control-plane", "rke2",
+				"--bootstrap", bootstrapProvider,
+				"--control-plane", controlPlaneProvider,
 				"--infrastructure", "elemental:v0.0.0").CombinedOutput()
 			// Show command output, easier to debug
 			GinkgoWriter.Printf("%s\n", string(out))
@@ -123,7 +123,7 @@ var _ = Describe("E2E - Install CAPI", Label("install-capi"), func() {
 				"--control-plane-machine-count=1",
 				"--worker-machine-count=2",
 				"--infrastructure", "elemental:v0.0.0",
-				"--flavor", "rke2",
+				"--flavor", bootstrapProvider,
 				"--target-namespace", clusterNS,
 				clusterName,
 				"--kubernetes-version="+k8sDownstreamVersion,
