@@ -150,13 +150,19 @@ jobs:
           ELEMENTAL_API_ENABLE_TLS: "\"true\""
           ELEMENTAL_ENABLE_DEFAULT_CA: "\"true\""
           OPERATOR_TYPE: "capi"
-          
+
+      - name: Build the elemental-agent container image
+        id: build_elemental-agent
+        run: |
+          cd cluster-api-provider-elemental
+          make docker-build-agent
+
       - name: Build the ISO image
         id: build_iso
         run: |
           cd cluster-api-provider-elemental 
           if ${{ contains(inputs.bootstrap_provider, 'kubeadm') }}; then
-            AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso-kubeadm
+            AGENT_CONFIG_FILE=iso/config/my-config.yaml KUBEADM_READY_OS=true make build-iso
           else
             AGENT_CONFIG_FILE=iso/config/my-config.yaml make build-iso
           fi
