@@ -97,7 +97,7 @@ jobs:
         with:
           repository: rancher-sandbox/cluster-api-provider-elemental
           path: cluster-api-provider-elemental
-          ref: debug_branch
+          ref: main
 
       - name: Setup Go
         id: setup_go
